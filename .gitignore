@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Datasets & processed data (root only — keep src/dataset/)
+/dataset/
+/data_processed/
+
+# Training / runtime outputs
+/outputs/
+/embeddings/
+/qr_output/
+/images/
+/models/
+/docs/
+
+# Model weights & binary artifacts
+*.pth
+*.pt
+*.onnx
+*.ckpt
+*.safetensors
+*.h5
+*.pkl
+*.pickle
+
+# NumPy
+*.npy
+*.npz
+
+# Images
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+*.webp
+*.tif
+*.tiff
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & caches
+*.log
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
