@@ -17,7 +17,7 @@ IS_COLAB = os.path.exists("/content")
 
 # Data lives on Drive in Colab; next to the repo on Windows
 if IS_COLAB:
-    DATA_ROOT = Path("/content/drive/MyDrive/face_qr_project")
+    DATA_ROOT = Path("/content/drive/MyDrive/Staj2026/face_qr_project")
 else:
     DATA_ROOT = PROJECT_ROOT
 
