@@ -12,9 +12,8 @@ class FaceGenerator(nn.Module):
                 512,
                 512 * 4 * 4
             ),
-            nn.ReLU()
+            nn.LeakyReLU(0.2)
         )
-
 
         self.decoder = nn.Sequential(
 
@@ -26,8 +25,8 @@ class FaceGenerator(nn.Module):
                 stride=2,
                 padding=1
             ),
-            nn.ReLU(),
-
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2),
 
             # 8x8 -> 16x16
             nn.ConvTranspose2d(
@@ -37,8 +36,8 @@ class FaceGenerator(nn.Module):
                 stride=2,
                 padding=1
             ),
-            nn.ReLU(),
-
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2),
 
             # 16x16 -> 32x32
             nn.ConvTranspose2d(
@@ -48,8 +47,8 @@ class FaceGenerator(nn.Module):
                 stride=2,
                 padding=1
             ),
-            nn.ReLU(),
-
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.2),
 
             # 32x32 -> 64x64
             nn.ConvTranspose2d(
@@ -59,8 +58,8 @@ class FaceGenerator(nn.Module):
                 stride=2,
                 padding=1
             ),
-            nn.ReLU(),
-
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(0.2),
 
             # 64x64 -> 128x128
             nn.ConvTranspose2d(
@@ -73,7 +72,6 @@ class FaceGenerator(nn.Module):
 
             nn.Tanh()
         )
-
 
     def forward(self, x):
 
