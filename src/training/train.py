@@ -17,13 +17,14 @@ BATCH_SIZE = 32
 LEARNING_RATE = 1e-4
 NUM_WORKERS = 2
 
-# Early stopping
 EARLY_STOP_PATIENCE = 10
 
-# ReduceLROnPlateau
 LR_SCHEDULER_PATIENCE = 4
 LR_SCHEDULER_FACTOR = 0.5
 LR_SCHEDULER_MIN_LR = 1e-6
+
+# Resume checkpoint — her epoch sonunda üzerine yazılır
+RESUME_CHECKPOINT = CHECKPOINT_DIR / "checkpoint_latest.pth"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -36,6 +37,55 @@ def build_loader(split: str, shuffle: bool) -> DataLoader:
         num_workers=NUM_WORKERS,
         pin_memory=True,
     )
+
+
+def save_checkpoint(
+    epoch: int,
+    model,
+    optimizer,
+    scheduler,
+    best_val_loss: float,
+    epochs_without_improvement: int,
+) -> None:
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state": model.state_dict(),
+            "optimizer_state": optimizer.state_dict(),
+            "scheduler_state": scheduler.state_dict(),
+            "best_val_loss": best_val_loss,
+            "epochs_without_improvement": epochs_without_improvement,
+        },
+        RESUME_CHECKPOINT,
+    )
+
+
+def load_checkpoint(model, optimizer, scheduler, device):
+    """
+    Eğer Drive'da checkpoint_latest.pth varsa yükler ve
+    (start_epoch, best_val_loss, epochs_without_improvement) döner.
+    Yoksa sıfırdan başlar.
+    """
+    if not RESUME_CHECKPOINT.exists():
+        print("Checkpoint bulunamadı — eğitim baştan başlıyor.")
+        return 1, float("inf"), 0
+
+    print(f"Checkpoint bulundu: {RESUME_CHECKPOINT}")
+    ckpt = torch.load(RESUME_CHECKPOINT, map_location=device)
+
+    model.load_state_dict(ckpt["model_state"])
+    optimizer.load_state_dict(ckpt["optimizer_state"])
+    scheduler.load_state_dict(ckpt["scheduler_state"])
+
+    start_epoch = ckpt["epoch"] + 1
+    best_val_loss = ckpt["best_val_loss"]
+    epochs_without_improvement = ckpt["epochs_without_improvement"]
+
+    print(
+        f"  → Epoch {ckpt['epoch']}'dan devam ediliyor  "
+        f"(best_val_loss={best_val_loss:.6f})"
+    )
+    return start_epoch, best_val_loss, epochs_without_improvement
 
 
 def main():
@@ -60,7 +110,6 @@ def main():
     model = FaceReconstructionModel().to(device)
     criterion = ReconstructionLoss(ssim_weight=SSIM_LOSS_WEIGHT)
 
-    # Identity loss: frozen InsightFace model, training-only
     print("Identity Loss yükleniyor...")
     id_loss = IdentityLoss(device=device)
     print(f"Identity Loss hazır  (weight={IDENTITY_LOSS_WEIGHT})")
@@ -75,6 +124,11 @@ def main():
         min_lr=LR_SCHEDULER_MIN_LR,
     )
 
+    # ── Resume ────────────────────────────────────────────────────────────────
+    start_epoch, best_val_loss, epochs_without_improvement = load_checkpoint(
+        model, optimizer, scheduler, device
+    )
+
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
@@ -86,13 +140,16 @@ def main():
         identity_loss_weight=IDENTITY_LOSS_WEIGHT,
     )
 
-    logger = TrainingLogger()
+    logger = TrainingLogger(resume=(start_epoch > 1))
 
     # ── Training loop ─────────────────────────────────────────────────────────
-    best_val_loss = float("inf")
-    epochs_without_improvement = 0
-
-    epoch_bar = tqdm(range(1, EPOCHS + 1), desc="Training", unit="epoch")
+    epoch_bar = tqdm(
+        range(start_epoch, EPOCHS + 1),
+        desc="Training",
+        unit="epoch",
+        initial=start_epoch - 1,
+        total=EPOCHS,
+    )
 
     for epoch in epoch_bar:
         train_loss = trainer.train_epoch(epoch, EPOCHS)
@@ -113,12 +170,6 @@ def main():
             f"LR: {current_lr:.2e}"
         )
 
-        # ── Checkpoint every epoch ────────────────────────────────────────────
-        torch.save(
-            model.state_dict(),
-            CHECKPOINT_DIR / f"model_epoch_{epoch:03d}.pth",
-        )
-
         # ── Best model ────────────────────────────────────────────────────────
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -130,6 +181,12 @@ def main():
             print(f"  ✓ best_model.pth güncellendi  (val_loss={best_val_loss:.6f})")
         else:
             epochs_without_improvement += 1
+
+        # ── Resume checkpoint (Drive'a her epoch kaydedilir) ──────────────────
+        save_checkpoint(
+            epoch, model, optimizer, scheduler,
+            best_val_loss, epochs_without_improvement,
+        )
 
         # ── Sample visualization ──────────────────────────────────────────────
         trainer.save_sample(epoch)
