@@ -49,7 +49,8 @@ class FaceDataset(Dataset):
             raise RuntimeError(f"Görüntü okunamadı: {image_path}")
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = image.astype(np.float32) / 255.0
+        # Normalize to [-1, 1] to match Tanh generator output
+        image = image.astype(np.float32) / 127.5 - 1.0
         image = torch.from_numpy(image).permute(2, 0, 1)
         embedding = torch.from_numpy(embedding)
 

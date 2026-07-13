@@ -15,11 +15,12 @@ def save_comparison(
     generated = generated.detach().cpu()
     target = target.detach().cpu()
 
+    # Convert from [-1, 1] to [0, 1] for display
+    generated = ((generated + 1.0) * 0.5).clamp(0, 1)
+    target     = ((target     + 1.0) * 0.5).clamp(0, 1)
+
     generated = generated.permute(1, 2, 0).numpy()
     target = target.permute(1, 2, 0).numpy()
-
-    generated = generated.clip(0, 1)
-    target = target.clip(0, 1)
 
     plt.figure(figsize=(6, 3))
 

@@ -14,6 +14,8 @@ class Trainer:
         criterion,
         optimizer,
         device,
+        identity_loss=None,
+        identity_loss_weight: float = 0.2,
     ):
         self.model = model
         self.train_loader = train_loader
@@ -21,6 +23,29 @@ class Trainer:
         self.criterion = criterion
         self.optimizer = optimizer
         self.device = device
+
+        # Optional identity loss — used only during training
+        self.identity_loss = identity_loss
+        self.identity_loss_weight = identity_loss_weight
+
+    def _compute_loss(self, predictions: torch.Tensor, images: torch.Tensor) -> torch.Tensor:
+        """
+        predictions : (B, 3, H, W) in [-1, 1]  — Tanh output
+        images      : (B, 3, H, W) in [-1, 1]  — loader output (normalized)
+
+        total_loss = L1 + identity_loss_weight * identity_loss
+        """
+        # Reconstruction loss — both tensors in [-1, 1], correct range
+        loss = self.criterion(predictions, images)
+
+        if self.identity_loss is not None:
+            # Identity loss expects [0, 1] input — convert both here
+            pred_01 = (predictions + 1.0) * 0.5
+            gt_01   = (images + 1.0) * 0.5
+            id_loss = self.identity_loss(pred_01, gt_01)
+            loss = loss + self.identity_loss_weight * id_loss
+
+        return loss
 
     def train_epoch(self, epoch: int, total_epochs: int) -> float:
         self.model.train()
@@ -37,7 +62,7 @@ class Trainer:
             images = images.to(self.device)
 
             predictions = self.model(embeddings)
-            loss = self.criterion(predictions, images)
+            loss = self._compute_loss(predictions, images)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -64,6 +89,7 @@ class Trainer:
             images = images.to(self.device)
 
             predictions = self.model(embeddings)
+            # Use only reconstruction loss for validation (faster + stable metric)
             loss = self.criterion(predictions, images)
 
             total_loss += loss.item()
