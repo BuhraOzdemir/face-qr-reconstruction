@@ -38,6 +38,13 @@ EMBEDDING_DIR = PROCESSED_DIR / "embeddings"
 SPLIT_FILE = PROCESSED_DIR / "split.csv"
 
 # -----------------------------
+# Loss weights
+# -----------------------------
+# total_loss = L1 + SSIM_LOSS_WEIGHT * ssim_loss + IDENTITY_LOSS_WEIGHT * identity_loss
+SSIM_LOSS_WEIGHT     = 0.5
+IDENTITY_LOSS_WEIGHT = 0.3
+
+# -----------------------------
 # Training / runtime outputs
 # -----------------------------
 OUTPUTS_DIR = DATA_ROOT / "outputs"

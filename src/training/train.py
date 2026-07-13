@@ -5,22 +5,23 @@ from tqdm import tqdm
 from src.dataset.loader import FaceDataset
 from src.model.face_reconstruction import FaceReconstructionModel
 from src.training.losses import ReconstructionLoss
+from src.training.identity_loss import IdentityLoss
 from src.training.trainer import Trainer
 from src.training.logger import TrainingLogger
-from src.config import CHECKPOINT_DIR
+from src.config import CHECKPOINT_DIR, SSIM_LOSS_WEIGHT, IDENTITY_LOSS_WEIGHT
 
 
 # ── Hyperparameters ───────────────────────────────────────────────────────────
-EPOCHS = 20
+EPOCHS = 50
 BATCH_SIZE = 32
 LEARNING_RATE = 1e-4
 NUM_WORKERS = 2
 
 # Early stopping
-EARLY_STOP_PATIENCE = 7
+EARLY_STOP_PATIENCE = 10
 
 # ReduceLROnPlateau
-LR_SCHEDULER_PATIENCE = 3
+LR_SCHEDULER_PATIENCE = 4
 LR_SCHEDULER_FACTOR = 0.5
 LR_SCHEDULER_MIN_LR = 1e-6
 # ─────────────────────────────────────────────────────────────────────────────
@@ -40,10 +41,12 @@ def build_loader(split: str, shuffle: bool) -> DataLoader:
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("=" * 50)
-    print(f"Device      : {device}")
-    print(f"Epochs      : {EPOCHS}")
-    print(f"Batch size  : {BATCH_SIZE}")
-    print(f"LR          : {LEARNING_RATE}")
+    print(f"Device           : {device}")
+    print(f"Epochs           : {EPOCHS}")
+    print(f"Batch size       : {BATCH_SIZE}")
+    print(f"LR               : {LEARNING_RATE}")
+    print(f"SSIM weight      : {SSIM_LOSS_WEIGHT}")
+    print(f"Identity weight  : {IDENTITY_LOSS_WEIGHT}")
     print("=" * 50)
 
     # ── Data ─────────────────────────────────────────────────────────────────
@@ -55,7 +58,13 @@ def main():
 
     # ── Model / loss / optimizer ──────────────────────────────────────────────
     model = FaceReconstructionModel().to(device)
-    criterion = ReconstructionLoss()
+    criterion = ReconstructionLoss(ssim_weight=SSIM_LOSS_WEIGHT)
+
+    # Identity loss: frozen InsightFace model, training-only
+    print("Identity Loss yükleniyor...")
+    id_loss = IdentityLoss(device=device)
+    print(f"Identity Loss hazır  (weight={IDENTITY_LOSS_WEIGHT})")
+
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -73,6 +82,8 @@ def main():
         criterion=criterion,
         optimizer=optimizer,
         device=device,
+        identity_loss=id_loss,
+        identity_loss_weight=IDENTITY_LOSS_WEIGHT,
     )
 
     logger = TrainingLogger()

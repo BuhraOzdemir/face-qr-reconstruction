@@ -4,6 +4,8 @@ numpy
 opencv-python
 onnxruntime
 insightface
+facenet-pytorch
+pytorch-msssim
 tqdm
 matplotlib
 pillow
