@@ -18,6 +18,8 @@ IS_COLAB = os.path.exists("/content")
 # Data lives on Drive in Colab; next to the repo on Windows
 if IS_COLAB:
     DATA_ROOT = Path("/content/drive/MyDrive/Staj2026/face_qr_project")
+    # Veri yerel diske kopyalandıysa çok daha hızlı okuma sağlar
+    _LOCAL_DATA = Path("/content/data_processed_v2")
 else:
     DATA_ROOT = PROJECT_ROOT
 
@@ -33,9 +35,15 @@ CELEBA_IMAGE_DIR = CELEBA_DIR / "img_align_celeba"
 # -----------------------------
 PROCESSED_DIR = DATA_ROOT / "data_processed_v2"
 
-IMAGE_DIR = PROCESSED_DIR / "images_128"
-EMBEDDING_DIR = PROCESSED_DIR / "embeddings"
-SPLIT_FILE = PROCESSED_DIR / "split.csv"
+# Yerel kopyaya öncelik ver — yoksa Drive'dan oku
+if IS_COLAB and _LOCAL_DATA.exists():
+    IMAGE_DIR     = _LOCAL_DATA / "images_128"
+    EMBEDDING_DIR = _LOCAL_DATA / "embeddings"
+    SPLIT_FILE    = _LOCAL_DATA / "split.csv"
+else:
+    IMAGE_DIR     = PROCESSED_DIR / "images_128"
+    EMBEDDING_DIR = PROCESSED_DIR / "embeddings"
+    SPLIT_FILE    = PROCESSED_DIR / "split.csv"
 
 # -----------------------------
 # Loss weights
