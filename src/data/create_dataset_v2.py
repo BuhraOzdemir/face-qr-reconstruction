@@ -146,8 +146,10 @@ def run() -> None:
             pbar = tqdm(ids, desc=split_name, unit="img", dynamic_ncols=True)
 
             for idx, image_id in enumerate(pbar):
-                # Skip already processed samples (allows resuming)
+                # Resume: embedding already exists — register in split_records
+                # but skip expensive re-processing.
                 if (OUT_EMBEDDINGS / f"{image_id}.npy").exists():
+                    split_records.append({"image_id": image_id, "split": split_name})
                     saved += 1
                     continue
 
