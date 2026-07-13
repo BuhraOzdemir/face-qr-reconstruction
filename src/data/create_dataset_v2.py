@@ -28,7 +28,7 @@ from tqdm import tqdm
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-ZIP_PATH = Path("/content/drive/MyDrive/Staj2026/archive.zip")
+ZIP_PATH = Path("/content/drive/MyDrive/Staj2026/celeba-dataset.zip")
 
 # Output root on Drive so processed data survives Colab session resets
 DATA_ROOT = Path("/content/drive/MyDrive/Staj2026/face_qr_project")
