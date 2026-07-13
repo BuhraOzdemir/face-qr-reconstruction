@@ -31,9 +31,11 @@ CELEBA_IMAGE_DIR = CELEBA_DIR / "img_align_celeba"
 # -----------------------------
 # Processed dataset
 # -----------------------------
-PROCESSED_DIR = DATA_ROOT / "data_processed"
+PROCESSED_DIR = DATA_ROOT / "data_processed_v2"
+
 IMAGE_DIR = PROCESSED_DIR / "images_128"
 EMBEDDING_DIR = PROCESSED_DIR / "embeddings"
+SPLIT_FILE = PROCESSED_DIR / "split.csv"
 
 # -----------------------------
 # Training / runtime outputs
