@@ -30,13 +30,19 @@ from tqdm import tqdm
 # ---------------------------------------------------------------------------
 ZIP_PATH = Path("/content/drive/MyDrive/Staj2026/archive.zip")
 
-# CSV shipped inside the cloned repo
-CSV_PATH = Path("/content/face-qr-reconstruction/list_eval_partition.csv")
-
 # Output root on Drive so processed data survives Colab session resets
 DATA_ROOT = Path("/content/drive/MyDrive/Staj2026/face_qr_project")
 OUT_IMAGES = DATA_ROOT / "data_processed_v2" / "images_128"
 OUT_EMBEDDINGS = DATA_ROOT / "data_processed_v2" / "embeddings"
+
+# Partition CSV — searched in order:
+#   1. repo root (cloned at /content/face-qr-reconstruction/)
+#   2. Drive project folder
+#   3. Inside the ZIP archive itself
+CSV_CANDIDATES = [
+    Path("/content/face-qr-reconstruction/list_eval_partition.csv"),
+    DATA_ROOT / "list_eval_partition.csv",
+]
 
 OUT_IMAGES.mkdir(parents=True, exist_ok=True)
 OUT_EMBEDDINGS.mkdir(parents=True, exist_ok=True)
@@ -111,9 +117,36 @@ def save_sample(image_id: str, img_bgr: np.ndarray, emb: np.ndarray) -> None:
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
+def _load_partition_csv() -> pd.DataFrame:
+    """Load list_eval_partition.csv from disk candidates or from inside the ZIP."""
+    for path in CSV_CANDIDATES:
+        if path.exists():
+            log.info("Reading partition CSV: %s", path)
+            return pd.read_csv(path)
+
+    # Last resort: read directly from the ZIP archive
+    log.info(
+        "Partition CSV not found on disk — trying inside ZIP: %s", ZIP_PATH
+    )
+    with zipfile.ZipFile(ZIP_PATH, "r") as zf:
+        members = zf.namelist()
+        csv_member = next(
+            (m for m in members if m.endswith("list_eval_partition.csv")),
+            None,
+        )
+        if csv_member is None:
+            raise FileNotFoundError(
+                "list_eval_partition.csv not found on disk or inside the ZIP.\n"
+                "Upload it to the repo root or to:\n"
+                f"  {DATA_ROOT / 'list_eval_partition.csv'}"
+            )
+        log.info("Found inside ZIP: %s", csv_member)
+        with zf.open(csv_member) as f:
+            return pd.read_csv(f)
+
+
 def run() -> None:
-    log.info("Reading partition CSV: %s", CSV_PATH)
-    df = pd.read_csv(CSV_PATH)
+    df = _load_partition_csv()
 
     # Normalise column names (strip whitespace)
     df.columns = df.columns.str.strip()
