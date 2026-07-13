@@ -28,18 +28,26 @@ class Trainer:
         self.identity_loss = identity_loss
         self.identity_loss_weight = identity_loss_weight
 
-    def _compute_loss(self, predictions: torch.Tensor, images: torch.Tensor) -> torch.Tensor:
+        # Apply identity loss every N batches to reduce GPU overhead
+        self.identity_loss_freq = 10
+
+    def _compute_loss(
+        self,
+        predictions: torch.Tensor,
+        images: torch.Tensor,
+        use_identity: bool = True,
+    ) -> torch.Tensor:
         """
         predictions : (B, 3, H, W) in [-1, 1]  — Tanh output
         images      : (B, 3, H, W) in [-1, 1]  — loader output (normalized)
 
-        total_loss = L1 + identity_loss_weight * identity_loss
+        total_loss = L1+SSIM  [+ identity_loss_weight * identity_loss]
+        Identity loss yalnızca use_identity=True olduğunda hesaplanır.
         """
-        # Reconstruction loss — both tensors in [-1, 1], correct range
         loss = self.criterion(predictions, images)
 
-        if self.identity_loss is not None:
-            # Identity loss expects [0, 1] input — convert both here
+        if use_identity and self.identity_loss is not None:
+            # Identity loss [0,1] bekliyor — her iki tensörü dönüştür
             pred_01 = (predictions + 1.0) * 0.5
             gt_01   = (images + 1.0) * 0.5
             id_loss = self.identity_loss(pred_01, gt_01)
@@ -57,12 +65,18 @@ class Trainer:
             leave=False,
         )
 
-        for embeddings, images in pbar:
+        for batch_idx, (embeddings, images) in enumerate(pbar):
             embeddings = embeddings.to(self.device)
             images = images.to(self.device)
 
             predictions = self.model(embeddings)
-            loss = self._compute_loss(predictions, images)
+
+            # Identity loss sadece her identity_loss_freq batch'te hesaplanır
+            use_identity = (
+                self.identity_loss is not None
+                and batch_idx % self.identity_loss_freq == 0
+            )
+            loss = self._compute_loss(predictions, images, use_identity=use_identity)
 
             self.optimizer.zero_grad()
             loss.backward()
