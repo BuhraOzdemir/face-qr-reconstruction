@@ -64,7 +64,6 @@ def main():
         factor=LR_SCHEDULER_FACTOR,
         patience=LR_SCHEDULER_PATIENCE,
         min_lr=LR_SCHEDULER_MIN_LR,
-        verbose=True,
     )
 
     trainer = Trainer(
