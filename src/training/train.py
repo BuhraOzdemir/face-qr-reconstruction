@@ -11,7 +11,7 @@ from src.config import CHECKPOINT_DIR
 
 
 # ── Hyperparameters ───────────────────────────────────────────────────────────
-EPOCHS = 50
+EPOCHS = 20
 BATCH_SIZE = 32
 LEARNING_RATE = 1e-4
 NUM_WORKERS = 2
